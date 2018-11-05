@@ -10,7 +10,12 @@ inline int randWrapper(const int n) { return floor(unif_rand()*n);}
 
 // SGD  drop_lasso mini batch
 // [[Rcpp::export]]
-NumericVector droplassoC(NumericMatrix & x, NumericVector & y, std::string family, double keep_prob, double lambda, NumericVector & binit, double gamma0, unsigned n_passes, unsigned minibatch_size ) {
+NumericVector droplassoC(const NumericMatrix& x, const NumericVector& y, 
+                         const std::string& family, const double& keep_prob, 
+                         const double& lambda, const NumericVector& binit, 
+                         const double& gamma0, const double& decay,
+                         const unsigned& n_passes, 
+                         const unsigned& minibatch_size ) {
   unsigned n_samples = x.nrow();
   unsigned n_features = x.ncol();
   unsigned t = 1, i, j, i_batch, i_pass;
@@ -55,12 +60,12 @@ NumericVector droplassoC(NumericMatrix & x, NumericVector & y, std::string famil
         
         // Increment gradient of the batch with the gradient of the current sample
         if (family=="gaussian") {
-         grad_drop += ( xb - y[idx[i]] ) * xi;
-       }
-       else if (family=="binomial") {
-         grad_drop += ( - y[idx[i]] + 1/(1+exp(-xb)) ) * xi ;
-       }
-       else {
+          grad_drop += ( xb - y[idx[i]] ) * xi;
+          }
+        else if (family=="binomial") {
+          grad_drop += ( - y[idx[i]] + 1/(1+exp(-xb)) ) * xi ;
+          }
+        else {
           std::cout << "family is invalid" << std::endl;
           std::exit( EXIT_FAILURE );
         }
@@ -69,7 +74,7 @@ NumericVector droplassoC(NumericMatrix & x, NumericVector & y, std::string famil
       grad_drop = grad_drop / minibatch_size;
 
       // SGD update
-      gamma = gamma0 / (1+ gamma0 * lambda * t); // update learning rate
+      gamma = gamma0 / (1+ decay * t); // update learning rate
       for (j=0; j< n_features ; ++j){
         if ( b[j] > gamma * ( grad_drop[j] + lambda ) ) {
           b[j] -= gamma * ( grad_drop[j] + lambda );

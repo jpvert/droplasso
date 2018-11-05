@@ -10,9 +10,10 @@
 #' @param lambda Regularisation parameter of the l_1 norm (default: \code{0})
 #' @param init Initial model to start optimization (default: zero vector).
 #' @param gamma0 Initial value of the learning rate (default: \code{1})
+#' @param decay Learning rate decay (default: \code{0.01})
 #' @param n_passes Number of passes over each example of the data on average (default: \code{1000})
 #' @param minibatch_size Batch size (default: \code{nobs})
-#' @return a vector of coefficients of size \code{nvars}
+#' @return A vector of coefficients of size \code{nvars} that solves the droplasso problem. The optimization problem is solved with a stochastic proximal gradient descent algorithm, using mini-batches of size \code{minibatch_size}, and a learning rate decaying as \code{gamma0/(1+decay*t)}, where \code{t} is the number of mini-batches processed.
 #' @examples
 #' #create data:
 #' nobs = 100
@@ -28,7 +29,7 @@
 #' # Fit a dropout lasso model
 #' droplasso(x, y, family="binomial", lambda=0.1, keep_prob=0.5)
 #' @export
-droplasso <- function(x, y, family=c("gaussian","binomial"), keep_prob=0.5, lambda=0, init=numeric(ncol(x)), gamma0=1, n_passes=1000, minibatch_size=nrow(x))
+droplasso <- function(x, y, family=c("gaussian","binomial"), keep_prob=0.5, lambda=0, init=numeric(ncol(x)), gamma0=1, decay=0.01, n_passes=1000, minibatch_size=nrow(x))
 {
   this.fcall=match.call()
   family = match.arg(family)
@@ -42,5 +43,5 @@ droplasso <- function(x, y, family=c("gaussian","binomial"), keep_prob=0.5, lamb
   }
   keep_prob = as.double(keep_prob)
   
-  return(droplassoC(x, y, family, keep_prob, lambda, init, gamma0, n_passes, minibatch_size))
+  return(droplassoC(x, y, family, keep_prob, lambda, init, gamma0, decay, n_passes, minibatch_size))
 }

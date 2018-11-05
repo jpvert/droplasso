@@ -5,8 +5,8 @@
 \title{Fit a droplasso model}
 \usage{
 droplasso(x, y, family = c("gaussian", "binomial"), keep_prob = 0.5,
-  lambda = 0, init = numeric(ncol(x)), gamma0 = 1, n_passes = 1000,
-  minibatch_size = nrow(x))
+  lambda = 0, init = numeric(ncol(x)), gamma0 = 1, decay = 0.01,
+  n_passes = 1000, minibatch_size = nrow(x))
 }
 \arguments{
 \item{x}{Input matrix, of dimension \code{nobs x nvars}; each row is an
@@ -24,12 +24,14 @@ observation vector.}
 
 \item{gamma0}{Initial value of the learning rate (default: \code{1})}
 
+\item{decay}{Learning rate decay (default: \code{0.01})}
+
 \item{n_passes}{Number of passes over each example of the data on average (default: \code{1000})}
 
 \item{minibatch_size}{Batch size (default: \code{nobs})}
 }
 \value{
-a vector of coefficients of size \code{nvars}
+A vector of coefficients of size \code{nvars} that solves the droplasso problem. The optimization problem is solved with a stochastic proximal gradient descent algorithm, using mini-batches of size \code{minibatch_size}, and a learning rate decaying as \code{gamma0/(1+decay*t)}, where \code{t} is the number of mini-batches processed.
 }
 \description{
 Fit a dropout lasso (droplasso) model.
