@@ -1,6 +1,10 @@
 #' Plot coefficients from a "droplasso" object
 #' 
-#' @param m Fitted model of class "survenet"
+#' @param x Fitted model of class "survenet"
+#' @param sign.lambda Should be \code{sign.lambda = 1} (default) to plot from
+#'   left to right in increasing values of \code{lambda}, \code{sign.lambda =
+#'   -1} otherwise
+#' @param ... Other arguments passed to \code{\link[graphics]{matplot}}
 #' @return None
 #' @examples
 #' #create data:
@@ -15,11 +19,12 @@
 #' # Plot is
 #' plot(m)
 #' @export
-plot.droplasso = function(m, sign.lambda = 1, ...) {
-  loglambda = log(m$lambda)
+#' @importFrom graphics matplot
+plot.droplasso = function(x, sign.lambda = 1, ...) {
+  loglambda = log(x$lambda)
   xlab = "Log lambda"
   if (sign.lambda < 0)
     xlab = paste("-", xlab, sep = "")
   index = sign.lambda * loglambda
-  matplot(index,t(m$beta),lty=1,xlab=xlab,ylab="Coefficients",type="l",...)
+  matplot(index,t(x$beta),lty=1,xlab=xlab,ylab="Coefficients",type="l",...)
 }

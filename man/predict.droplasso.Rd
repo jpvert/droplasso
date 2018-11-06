@@ -5,7 +5,7 @@
 \title{Make predictions from a droplasso object.}
 \usage{
 \method{predict}{droplasso}(object, newx, s = NULL, type = c("link",
-  "coefficients"))
+  "coefficients"), ...)
 }
 \arguments{
 \item{object}{Fitted "\code{droplasso}" model object}
@@ -22,6 +22,8 @@ the model.}
 the linear predictor. Type \code{"coefficients"} computes the coefficients 
 at the requested values of \code{s}. If \code{newx} is not provided, then 
 \code{type="coefficients"} automatically.}
+
+\item{...}{Other parameters.}
 }
 \value{
 If \code{type="link"}, returns a matrix of prediction scores, one row

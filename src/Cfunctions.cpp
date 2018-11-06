@@ -65,10 +65,6 @@ NumericVector droplassoC(const NumericMatrix& x, const NumericVector& y,
         else if (family=="binomial") {
           grad_drop += ( - y[idx[i]] + 1/(1+exp(-xb)) ) * xi ;
           }
-        else {
-          std::cout << "family is invalid" << std::endl;
-          std::exit( EXIT_FAILURE );
-        }
       }
       // Don't forget to divide by minibatch_size to account for the batch size
       grad_drop = grad_drop / minibatch_size;

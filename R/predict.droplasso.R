@@ -13,6 +13,7 @@
 #'   the linear predictor. Type \code{"coefficients"} computes the coefficients 
 #'   at the requested values of \code{s}. If \code{newx} is not provided, then 
 #'   \code{type="coefficients"} automatically.
+#' @param ... Other parameters.
 #' @return If \code{type="link"}, returns a matrix of prediction scores, one row
 #'   per sample of \code{newx}, one column per value of lambda. If 
 #'   \code{type="coefficients"}, returns a matrix of weights of the model, one 
@@ -35,7 +36,7 @@
 #' # Plot prediction score
 #' plot(predict(m, x, s=0.01), xlab="Sample", ylab="Score", main="Lambda=0.01")
 #' @export
-predict.droplasso = function(object, newx, s=NULL, type=c("link", "coefficients")) {
+predict.droplasso = function(object, newx, s=NULL, type=c("link", "coefficients"), ...) {
   
   type = match.arg(type)
   if (missing(newx)) {
@@ -67,6 +68,7 @@ predict.droplasso = function(object, newx, s=NULL, type=c("link", "coefficients"
 
 # Interpolate s values on a sequence of lambda
 # Taken from glmnet package
+#' @importFrom stats approx
 lambda.interp = function(lambda, s)
 {
   if (length(lambda) == 1) {

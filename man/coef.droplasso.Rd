@@ -4,14 +4,16 @@
 \alias{coef.droplasso}
 \title{Coefficients of a model of class droplasso}
 \usage{
-\method{coef}{droplasso}(m, s = NULL, ...)
+\method{coef}{droplasso}(object, s = NULL, ...)
 }
 \arguments{
-\item{m}{Object of class \code{droplasso}}
+\item{object}{Object of class \code{droplasso}}
 
 \item{s}{Value(s) of the penalty parameter lambda at which coefficients are 
 required. Can be either omitted, or a vector of numeric values. If omitted,
 default is the entire sequence used to create the model.}
+
+\item{...}{other arguments.}
 }
 \value{
 A matrix of coefficients, each column corresonds to a regularization 

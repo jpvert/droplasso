@@ -4,10 +4,16 @@
 \alias{plot.droplasso}
 \title{Plot coefficients from a "droplasso" object}
 \usage{
-\method{plot}{droplasso}(m, sign.lambda = 1, ...)
+\method{plot}{droplasso}(x, sign.lambda = 1, ...)
 }
 \arguments{
-\item{m}{Fitted model of class "survenet"}
+\item{x}{Fitted model of class "survenet"}
+
+\item{sign.lambda}{Should be \code{sign.lambda = 1} (default) to plot from
+left to right in increasing values of \code{lambda}, \code{sign.lambda =
+-1} otherwise}
+
+\item{...}{Other arguments passed to \code{\link[graphics]{matplot}}}
 }
 \value{
 None

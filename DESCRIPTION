@@ -6,12 +6,22 @@ Authors@R:
     c(person("Beyrem","Khalfaoui", role=c("aut","cre"), 
           email="beyrem.khalfaoui@mines-paristech.fr" ),
       person("Jean-Philippe", "Vert", role="aut", 
-          email="jean-philippe.vert@mines-paristech.fr"))
+          email="jean-philippe.vert@m4x.org"))
 Description:
   This package implements the dropout lasso estimator.
 License: GPL (>= 2)
-Imports: Rcpp (>= 0.12.12)
+Imports: 
+    graphics,
+    Rcpp (>= 0.12.12), 
+    stats
+Suggests:
+    glmnet,
+    knitr,
+    mvtnorm,
+    ROCR,
+    rmarkdown
 LinkingTo: Rcpp
 RoxygenNote: 6.0.1
 NeedsCompilation: yes
 BugReports: https://github.com/jpvert/droplasso
+VignetteBuilder: knitr

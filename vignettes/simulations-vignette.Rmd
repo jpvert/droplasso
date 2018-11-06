@@ -83,11 +83,11 @@ We see that, as $\lambda$ decreases and the model goes from the null model to mo
 So far we have only tested droplasso with the default dropout parameter set to 0.5 . Let us see how the performance varies when we play with this probability. Since the convergence of the optimization is harder to reach for small values of $p$, the performance is subject to more fluctuation. In order to pick the "best" AUC, we therefore use a validation set to select the "best" lambda, and then assess the AUC of that particular lambda only on the test set.
 ```{r proba droplasso}
 probalist <- 0.6^seq(0,10)
+nlambda <- 100
 auclist <- c()
 for (proba in probalist) {
-  cat('.')
   # Train on the train set
-  m <- droplasso(data_train$x, data_train$y, family="binomial", keep_prob=proba, nlambda=20, n_passes = 10000)
+  m <- droplasso(data_train$x, data_train$y, family="binomial", keep_prob=proba, nlambda=nlambda, n_passes = 10000)
   # Pick lambda with the best AUC on the validation set
   ypred <- predict(m, data_valid$x)
   pred <- sapply(seq(ncol(ypred)), function(j) {prediction(ypred[,j], data_valid$y)})
@@ -108,9 +108,8 @@ alphalist <- seq(0,1,0.1)
 auclist <- c()
 firstalpha <- TRUE
 for (alpha in alphalist) {
-cat('.')
   # Train glmnet model
-  m_glm <- glmnet(data_train$x, data_train$y, family="binomial", intercept=F, alpha=alpha, standardize = F)
+  m_glm <- glmnet(data_train$x, data_train$y, family="binomial", intercept=F, alpha=alpha, standardize = F, nlambda=nlambda)
   # Predict on the validation set
   ypred <- data_valid$x %*% m_glm$beta
   pred <- sapply(seq(ncol(ypred)), function(j) {prediction(ypred[,j], data_valid$y)})
@@ -132,6 +131,9 @@ cat('.')
   auclist <- c(auclist,auc)
 }
 plot(alphalist, auclist[1:11], type='b', xlab='alpha', ylab='Test AUC', main='Glmnet: AUC vs alpha for best lambda')
+```
+We see that, similar to droplasso, glmnet works best when there is no lasso regularization, and a lot of ridge regularization, as shown on the following plot which details the performance of glmnet for various lambda and alpha.
+```{r glmnet perf}
 matplot(auc_el, type='l', lty=1, xlab='lambda index', ylab='Validation AUC', main="Glmnet, different alpha's", legend=alphalist)
 grid()
 legend("topright",legend=alphalist,col=seq(length(alphalist)),lty=1)
