@@ -3,9 +3,9 @@ Type: Package
 Title: Dropout lasso
 Version: 0.1
 Authors@R: 
-    c(person("Beyrem","Khalfaoui", role=c("aut","cre"), 
+    c(person("Beyrem","Khalfaoui", role=c("aut"), 
           email="beyrem.khalfaoui@mines-paristech.fr" ),
-      person("Jean-Philippe", "Vert", role="aut", 
+      person("Jean-Philippe", "Vert", role=c("aut","cre"), 
           email="jean-philippe.vert@m4x.org"))
 Description:
   This package implements the dropout lasso estimator.

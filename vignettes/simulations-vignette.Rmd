@@ -1,30 +1,32 @@
 ---
 title: "Droplasso vs Glmnet on simulated data"
-author: "Beyrem Khalfaoui and Jean-Philippe Vert"
+author: "Jean-Philippe Vert"
 date: "`r Sys.Date()`"
 output: rmarkdown::html_vignette
 bibliography: bibli.bib
+header-includes:
+    - \newcommand{\RR}{\mathbb{R}}
+    - \usepackage{amsmath,amssymb,amsfont,bbm}
 vignette: >
   %\VignetteIndexEntry{Droplasso vs Glmnet on simulated data}
   %\VignetteEngine{knitr::rmarkdown}
-  \usepackage[utf8]{inputenc}---
+  %\VignetteEncoding{UTF-8}
 ---
-
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(message = FALSE, warning = FALSE, fig.show='hold', fig.width=3.4, fig.height=3.4)
+knitr::opts_chunk$set(message = FALSE, warning = FALSE, fig.show='hold', fig.width=4, fig.height=3.4)
 set.seed(4395)
 ```
 
 # Introduction  
+`droplasso` is a package that fits a generalized linear model via maximum likelihood regularized by droplasso [@Khalfaoui2018DropLasso], a procedure that combines dropout [@Srivastava2014Dropout] and lasso [@Tibshirani1996Regression] regularizations.
 
-Droplasso is a package that fits a generalized linear model via maximum likelihood regularized by droplasso [@Khalfaoui2018DropLasso], a procedure that combines dropout [@Srivastava2014Dropout] and lasso [@Tibshirani1996Regression] regularizations. Given a training set of samples $x_1,\ldots,x_n\in\mathbb{R}^d$ with labels $y_1,\ldots,y_n\in\mathbb{R}$, the droplasso regularization estimates a linear model $f(x)=w^\top x$ for $x\in\mathbb{R}^d$ by solving:
+Given a training set of samples $x_1,\ldots,x_n\in\mathbb{R}^d$ with labels $y_1,\ldots,y_n\in\mathbb{R}$, the droplasso regularization estimates a linear model $f(x)=w^\top x$ for $x\in\mathbb{R}^d$ by solving:
 \begin{equation}
   \min_{w \in \mathbb{R}^d}   \left\{ \frac{1}{n} \sum_{i=1}^{n} \underset{\delta_i \sim B(p)^d}{ \mathbb {E}}  L\left(w,\delta_i  \odot \frac{x_{i,}}{p}  , y_{i} \right)   +  \lambda  \left \| w\right \|_{1} \right\}  \,,
 \end{equation}
 where $L(w,x,y)$ is a negative log likelihood of a linear model $w$ on a observation $x$ with label $y$, $B(p)$ is the Bernoulli distribution with parameter $p$, and $\odot$ is the entry-wise multiplication of vectors. When $p=1$, each $\delta_i$ is almost surely a vector of $1$'s and droplasso boils down to classical lasso; and when $\lambda=0$, droplasso boils down to dropout.
 
 # Data simulation
-
 Here we illustrate the use of droplasso on simulated data, and compare it to standard dropout and elastic net regularisation. We design a toy simulation to illustrate in particular how corruption by dropout noise impacts the performances of the different methods. The simulation goes as follow : 
 
 - We set the dimension to $d=100$.
@@ -57,16 +59,20 @@ data_test <- generate_data(n=10000)
 ```
 
 # Droplasso
-Let us train a droplasso model with default parameter for a binary classification problem (i.e., using the logistic loss function):
+Let us illustrate how to fit a Droplasso model and test it.
+
+## Droplasso for a given $p$
+Let us train a droplasso model with default parameter ($p$=0.5) for a binary classification problem (i.e., using the logistic loss function). The function `droplasso` allows to directly fit the model over a grid of $\lambda$ to estimate the regularization path, so here we compute the regularization path over 50 values of $\lambda$:
 ```{r droplasso}
 library(droplasso)
 m <- droplasso(data_train$x, data_train$y, family="binomial", nlambda=50)
 ```
 Since we did not speficy a value for the regularization parameter $\lambda$, the function has computed all droplasso models over a grid of $\lambda$. We can visualize the resulting regularization path, i.e., the model weights as a function of $\lambda$:
 ```{r plot droplasso}
-plot(m)
+plot(m, main="Droplasso p=0.5")
 ```
-Let us see what the model predicts on the test set (for all $\lambda$ values on the regularization path)
+
+Let us see what the model predicts on the test set (for all $\lambda$ values)
 ```{r predict droplasso}
 ypred <- predict(m, data_test$x)
 ```
@@ -78,16 +84,25 @@ auc <- unlist(lapply(pred, function(p) {performance(p, "auc")@y.values[[1]]}))
 plot(log(m$lambda), auc, type='l', xlab="log(lambda)", ylab="AUC", main="Droplasso AUC on the test set")
 grid()
 ```
+
 We see that, as $\lambda$ decreases and the model goes from the null model to models with more variables, the AUC sharply increases and then decreases, which illustrates the benefits of regularization.
 
-So far we have only tested droplasso with the default dropout parameter set to 0.5 . Let us see how the performance varies when we play with this probability. Since the convergence of the optimization is harder to reach for small values of $p$, the performance is subject to more fluctuation. In order to pick the "best" AUC, we therefore use a validation set to select the "best" lambda, and then assess the AUC of that particular lambda only on the test set.
+## Varying $p$
+So far we have only tested droplasso with the default dropout parameter $p$ set to 0.5 . However, $p$ also is also a regularization parameter that we can tune between 0 (high regularization) and 1 (no regularization). Note that when $p$ is small, the optimization is more challenging and it may be useful to increase the number of epoch of the proximal stochastic gradient descent algorithm by playing with the `n_passes` parameter of the `droplasso` function.
+
+Let us see how the performance varies when we vary $p$. Since the convergence of the optimization is harder to reach for small values of $p$, the performance is subject to more fluctuation. In order to pick the "best" AUC, we therefore use a validation set to select the "best" $\lambda$, and then assess the AUC of that particular $\lambda$ only on the test set.
 ```{r proba droplasso}
+# The values of p we want to test
 probalist <- 0.6^seq(0,10)
+# The number of lambda values we want to test to form the regularization path
 nlambda <- 100
+# The number of epoch of the optimization procedure
+n_passes = 10000
+
 auclist <- c()
 for (proba in probalist) {
   # Train on the train set
-  m <- droplasso(data_train$x, data_train$y, family="binomial", keep_prob=proba, nlambda=nlambda, n_passes = 10000)
+  m <- droplasso(data_train$x, data_train$y, family="binomial", keep_prob=proba, nlambda=nlambda, n_passes = n_passes)
   # Pick lambda with the best AUC on the validation set
   ypred <- predict(m, data_valid$x)
   pred <- sapply(seq(ncol(ypred)), function(j) {prediction(ypred[,j], data_valid$y)})
@@ -100,10 +115,12 @@ for (proba in probalist) {
 }
 plot(log(probalist), auclist, type='b', xlab='ln(p)', ylab='Test AUC', main='Droplasso: AUC vs p for best lambda')
 ```
+
 # Comparison of Droplasso and Glmnet
 As explained in [@Khalfaoui2018DropLasso], droplasso is related to elastic net regularization [@Zou2005Regularization]. Let us check how elastic net behaves on the same dataset.
 ```{r glmnet}
 library(glmnet)
+# The values of alpha to interpolate between lasso (alpha=1) and ridge (alpha=0)
 alphalist <- seq(0,1,0.1)
 auclist <- c()
 firstalpha <- TRUE
@@ -130,13 +147,15 @@ for (alpha in alphalist) {
   auc <- performance(prediction(ypred, data_test$y), "auc")@y.values[[1]]
   auclist <- c(auclist,auc)
 }
-plot(alphalist, auclist[1:11], type='b', xlab='alpha', ylab='Test AUC', main='Glmnet: AUC vs alpha for best lambda')
+plot(alphalist, auclist[1:11], type='b', xlab='alpha', ylab='Test AUC', main='Glmnet with best lambda')
 ```
+
 We see that, similar to droplasso, glmnet works best when there is no lasso regularization, and a lot of ridge regularization, as shown on the following plot which details the performance of glmnet for various lambda and alpha.
 ```{r glmnet perf}
 matplot(auc_el, type='l', lty=1, xlab='lambda index', ylab='Validation AUC', main="Glmnet, different alpha's", legend=alphalist)
 grid()
-legend("topright",legend=alphalist,col=seq(length(alphalist)),lty=1)
 ```
+
+The best curve is for `alpha=0` (ridge regression), and the best values for large $\lambda$ (left of the plot).
 
 # References
