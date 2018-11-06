@@ -52,34 +52,89 @@ generate_data <- function(n=100, d=100, d1=10, pi=1, w=0.05, q=0.4) {
   return(list(z=z, x=x, y=y, w=w))
 }
 data_train <- generate_data()
+data_valid <- generate_data(n=10000)
 data_test <- generate_data(n=10000)
 ```
 
-# Comparison of Droplasso and Glmnet
-As explained in [@Khalfaoui2018DropLasso], droplasso is related to elastic net regularization [@Zou2005Regularization] that solves:
-\begin{equation}
-  \min_{w \in \mathbb{R}^d}   \left\{ \frac{1}{n} \sum_{i=1}^{n}  L\left(w, x_i , y_{i} \right)   +  \lambda_{\text{enet}}  \left( \frac{\alpha}{2} \left \| w\right \|_{2}^2 + (\alpha-1) \left \| w\right \|_{1} \right)\right\}  \,.
-\end{equation}
+# Droplasso
+Let us train a droplasso model with default parameter for a binary classification problem (i.e., using the logistic loss function):
+```{r droplasso}
+library(droplasso)
+m <- droplasso(data_train$x, data_train$y, family="binomial", nlambda=50)
+```
+Since we did not speficy a value for the regularization parameter $\lambda$, the function has computed all droplasso models over a grid of $\lambda$. We can visualize the resulting regularization path, i.e., the model weights as a function of $\lambda$:
+```{r plot droplasso}
+plot(m)
+```
+Let us see what the model predicts on the test set (for all $\lambda$ values on the regularization path)
+```{r predict droplasso}
+ypred <- predict(m, data_test$x)
+```
+Since we know the true labels, we can compute the area under the ROC curve (AUC) to evaluate the quality of the predictions
+```{r auc droplasso}
+library(ROCR)
+pred <- sapply(seq(ncol(ypred)), function(j) {prediction(ypred[,j], data_test$y)})
+auc <- unlist(lapply(pred, function(p) {performance(p, "auc")@y.values[[1]]}))
+plot(log(m$lambda), auc, type='l', xlab="log(lambda)", ylab="AUC", main="Droplasso AUC on the test set")
+grid()
+```
+We see that, as $\lambda$ decreases and the model goes from the null model to models with more variables, the AUC sharply increases and then decreases, which illustrates the benefits of regularization.
 
+So far we have only tested droplasso with the default dropout parameter set to 0.5 . Let us see how the performance varies when we play with this probability. Since the convergence of the optimization is harder to reach for small values of $p$, the performance is subject to more fluctuation. In order to pick the "best" AUC, we therefore use a validation set to select the "best" lambda, and then assess the AUC of that particular lambda only on the test set.
+```{r proba droplasso}
+probalist <- 0.6^seq(0,10)
+auclist <- c()
+for (proba in probalist) {
+  cat('.')
+  # Train on the train set
+  m <- droplasso(data_train$x, data_train$y, family="binomial", keep_prob=proba, nlambda=20, n_passes = 10000)
+  # Pick lambda with the best AUC on the validation set
+  ypred <- predict(m, data_valid$x)
+  pred <- sapply(seq(ncol(ypred)), function(j) {prediction(ypred[,j], data_valid$y)})
+  auc <- unlist(lapply(pred, function(p) {performance(p, "auc")@y.values[[1]]}))
+  bestlambda <- m$lambda[which.max(auc)]
+  # Assess AUC of the best lambda on the test set
+  ypred <- predict(m, data_test$x, s=bestlambda)
+  auc <- performance(prediction(ypred, data_test$y), "auc")@y.values[[1]]
+  auclist <- c(auclist,auc)
+}
+plot(log(probalist), auclist, type='b', xlab='ln(p)', ylab='Test AUC', main='Droplasso: AUC vs p for best lambda')
+```
+# Comparison of Droplasso and Glmnet
+As explained in [@Khalfaoui2018DropLasso], droplasso is related to elastic net regularization [@Zou2005Regularization]. Let us check how elastic net behaves on the same dataset.
 ```{r glmnet}
 library(glmnet)
-library(ROCR)
-nalpha <- 10
-nlambda <- 100
-for (i in seq(nalpha)) {
-  alpha <- (i-1)/(nalpha-1)
-  m_glm <- glmnet(data_train$x, data_train$y, family="binomial", intercept=F, alpha=alpha, standardize = F) # Train glmnet model
-  ypred <- (data_test$x) %*% m_glm$beta # predict on the test set
-  pred <- sapply(seq(ncol(ypred)), function(j) {prediction(ypred[,j], data_test$y)})
+alphalist <- seq(0,1,0.1)
+auclist <- c()
+firstalpha <- TRUE
+for (alpha in alphalist) {
+cat('.')
+  # Train glmnet model
+  m_glm <- glmnet(data_train$x, data_train$y, family="binomial", intercept=F, alpha=alpha, standardize = F)
+  # Predict on the validation set
+  ypred <- data_valid$x %*% m_glm$beta
+  pred <- sapply(seq(ncol(ypred)), function(j) {prediction(ypred[,j], data_valid$y)})
   auc <- unlist(lapply(pred, function(p) {performance(p, "auc")@y.values[[1]]}))
   if (length(auc) < nlambda) { # glmnet did not converge for the last lambda values
     auc <- c(auc, rep(0.5, nlambda-length(auc)))
   }
-  if (i == 1) {
+  if (firstalpha) {
     auc_el <- auc
+    firstalpha <- FALSE
   } else {
     auc_el <- cbind(auc_el, auc)
   }
+  
+  # Assess AUC of the best lambda on the test set
+  bestlambdaindex <- which.max(auc)
+  ypred <- data_test$x %*% m_glm$beta[,bestlambdaindex]
+  auc <- performance(prediction(ypred, data_test$y), "auc")@y.values[[1]]
+  auclist <- c(auclist,auc)
 }
+plot(alphalist, auclist[1:11], type='b', xlab='alpha', ylab='Test AUC', main='Glmnet: AUC vs alpha for best lambda')
+matplot(auc_el, type='l', lty=1, xlab='lambda index', ylab='Validation AUC', main="Glmnet, different alpha's", legend=alphalist)
+grid()
+legend("topright",legend=alphalist,col=seq(length(alphalist)),lty=1)
 ```
+
 # References

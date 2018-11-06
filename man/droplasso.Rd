@@ -5,36 +5,86 @@
 \title{Fit a droplasso model}
 \usage{
 droplasso(x, y, family = c("gaussian", "binomial"), keep_prob = 0.5,
-  lambda = 0, init = numeric(ncol(x)), gamma0 = 1, decay = 0.01,
-  n_passes = 1000, minibatch_size = nrow(x))
+  nlambda = 10, lambda.min.ratio = ifelse(nobs < nvars, 0.01, 1e-04),
+  lambda = NULL, init = matrix(0, nrow = ncol(x)), gamma0 = 1,
+  decay = 1, n_passes = 1000, minibatch_size = nrow(x))
 }
 \arguments{
-\item{x}{Input matrix, of dimension \code{nobs x nvars}; each row is an
+\item{x}{Input matrix, of dimension \code{nobs x nvars}; each row is an 
 observation vector.}
 
-\item{y}{Response variable.}
+\item{y}{Response variable, a vector of length \code{nobs} of quantitative 
+values for \code{family="gaussian"}, or of factors with two levels for 
+\code{family="binomial"}.}
 
-\item{family}{Response type. \code{family="gaussian"} (default) for least squares regression, \code{family="binomial"} for logistic regression}
+\item{family}{Response type. \code{family="gaussian"} (default) for least 
+squares regression, \code{family="binomial"} for logistic regression}
 
-\item{keep_prob}{The probability that each element is kept (default: \code{0.5})}
+\item{keep_prob}{The probability that each element is kept (default: 
+\code{0.5})}
 
-\item{lambda}{Regularisation parameter of the l_1 norm (default: \code{0})}
+\item{nlambda}{The number of \code{lambda} values (default: \code{10})}
+
+\item{lambda.min.ratio}{Smallest value for \code{lambda}, as a fraction of 
+\code{lambda.max}, the (data derived) entry value (i.e. the smallest value 
+for which all coefficients are zero). The default depends on the sample 
+size \code{nobs} relative to the number of variables \code{nvars}. If 
+\code{nobs > nvars}, the default is \code{0.0001}, close to zero.  If 
+\code{nobs < nvars}, the default is \code{0.01}.}
+
+\item{lambda}{The sequence of regularization parameters. By default, 
+\code{lambda=NULL} lets the function estimate a good sequence by itself.}
 
 \item{init}{Initial model to start optimization (default: zero vector).}
 
 \item{gamma0}{Initial value of the learning rate (default: \code{1})}
 
-\item{decay}{Learning rate decay (default: \code{0.01})}
+\item{decay}{Learning rate decay (default: \code{1})}
 
-\item{n_passes}{Number of passes over each example of the data on average (default: \code{1000})}
+\item{n_passes}{Number of passes over each example of the data on average 
+(default: \code{1000})}
 
 \item{minibatch_size}{Batch size (default: \code{nobs})}
 }
 \value{
-A vector of coefficients of size \code{nvars} that solves the droplasso problem. The optimization problem is solved with a stochastic proximal gradient descent algorithm, using mini-batches of size \code{minibatch_size}, and a learning rate decaying as \code{gamma0/(1+decay*t)}, where \code{t} is the number of mini-batches processed.
+An object of class \code{"droplasso"}, i.e. a list with the 
+  following: \item{beta}{The \code{nvars x nlambda} matrix of weights, one 
+  column per lambda, one row per variable} \item{lambda}{The sequence of 
+  lambda for which the weigth is given} \item{nzero}{The number of non-zero 
+  coefficient in each model} \item{call}{The function call}
 }
 \description{
-Fit a dropout lasso (droplasso) model.
+Fit a dropout lasso (droplasso) model. The regularization path is computed 
+for the lasso component of the penalty at a grid of values for the 
+regularization parameter lambda.
+}
+\details{
+Droplasso estimates a linear model by minimizing an objective 
+  function \deqn{\min_{w} R(w) + \lambda*||w||_1} where \eqn{R(w)} is the 
+  expected loss when the linear model is applied to a random training example
+  subject to dropout noise, i.e., each coordinate is kept intact with 
+  probability \code{keep_prob} and set to zero with probability \code{1 - 
+  keep_prob}.
+
+Given a prediction \eqn{u} and a true label \eqn{y}, the loss is
+  \eqn{(u-y)^2 / 2} when \code{family="gaussian"}, and \eqn{-y*u + ln( 1+e^u
+  )} when \code{family="binomial"} (i.e., the negative log-likelihood of the
+  logistic regression model).
+
+The optimization problem is solved with a stochastic proximal
+  gradient descent algorithm, using mini-batches of size
+  \code{minibatch_size}, and a learning rate decaying as 
+  \code{gamma0/(1+decay*t)}, where \code{t} is the number of mini-batches 
+  processed.
+
+The problem is solved for all regularization parameters provided in
+  the \code{lambda} argument. If no \code{lambda} argument is provided, then
+  the function automatically chooses a decreasing sequence of \eqn{\lambda}'s
+  to start from the null model and add features in the model along the
+  regularization path. We use warm restart to start optimization for a given
+  \eqn{\lambda} from the solution of the previous \eqn{lambda}, therefore it
+  is strongly recommended to provide a sequence of \eqn{\lambda$}'s in
+  decreasing order if a sequence is provided in the \code{lambda} argument.
 }
 \examples{
 #create data:
